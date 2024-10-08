@@ -11,6 +11,9 @@ $ pipx install .
 
 ## Usage
 
+(`tranz` is a text file containing the lyrics to
+*Tranz* by Gorillaz. It is not included in this repo.)
+
 ```console
 $ textdither tranz --token-length 5 --codebook-size 80 --samples 10000 --threshold 0.0001
 Oscillate toujkgke phememuedho you're io youuedh
