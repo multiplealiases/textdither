@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "textdither"
+dynamic = ["version"]
+description = '"Dither" (more properly posterize) binary data using k-means clustering.'
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "multiplealiases", email = "conflictvegetable@protonmail.com" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+]
+dependencies = [
+    "scipy",
+    "numpy",
+    "more-itertools",
+]
+
+[project.scripts]
+textdither = "textdither.main:main"
+
+[project.urls]
+Documentation = "https://github.com/multiplealiases/textdither#readme"
+Issues = "https://github.com/multiplealiases/textdither/issues"
+Source = "https://github.com/multiplealiases/textdither"
+
+[tool.hatch.version]
+path = "src/textdither/__about__.py"
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/textdither tests}"
+
+[tool.coverage.run]
+source_pkgs = ["textdither", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/textdither/__about__.py",
+]
+
+[tool.coverage.paths]
+textdither = ["src/textdither", "*/textdither/src/textdither"]
+tests = ["tests", "*/textdither/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
