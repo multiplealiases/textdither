@@ -27,6 +27,7 @@ dependencies = [
     "scipy",
     "numpy",
     "more-itertools",
+    "scikit-learn",
 ]
 
 [project.scripts]

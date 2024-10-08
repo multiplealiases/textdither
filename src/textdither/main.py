@@ -1,6 +1,6 @@
 import argparse
 import numpy
-import scipy
+import sklearn.cluster
 import more_itertools
 import sys
 
@@ -15,8 +15,8 @@ def main():
     parser.add_argument("-t", "--token-length", default=5, type=int)
     parser.add_argument("-c", "--codebook-size", default=10, type=int)
     # limit the number of samples taken to improve processing speed
-    parser.add_argument("-n", "--samples", default=5000, type=int)
-    parser.add_argument("-p", "--threshold", default=1e-03, type=float)
+    parser.add_argument("-n", "--samples", default=50000, type=int)
+    parser.add_argument("-i", "--iterations", default=100, type=int)
     args = parser.parse_args()
 
     tokens = numpy.array(list((make_tokens(args.file, args.token_length))))
@@ -26,13 +26,13 @@ def main():
 
     alltokens = tokens.astype(float)
     traintokens = rng.choice(alltokens, size=samples)
-    codebook = scipy.cluster.vq.kmeans(traintokens, args.codebook_size, thresh=args.threshold)
-    codebookint = codebook[0].astype(numpy.uint8)
+
+    codebook = sklearn.cluster.MiniBatchKMeans(n_clusters=args.codebook_size, max_iter=args.iterations).fit(traintokens)
     # print(codebookint, file=sys.stderr)
-    indexes = scipy.cluster.vq.vq(alltokens, codebook[0])
+    indexes = codebook.predict(alltokens)
     # print(indexes[0], file=sys.stderr)
-    for i in indexes[0]:
-        out = codebookint[i]
+    for i in indexes:
+        out = codebook.cluster_centers_[i].astype(numpy.uint8)
         sys.stdout.buffer.write(out)
     # deeply hacky way to pad out the output for FFmpeg's use
     nulls = bytes([0] * args.token_length)
