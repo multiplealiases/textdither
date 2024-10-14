@@ -26,12 +26,15 @@ classifiers = [
 dependencies = [
     "scipy",
     "numpy",
+    "itertools"
     "more-itertools",
     "scikit-learn",
+    "scikit-image",
 ]
 
 [project.scripts]
 textdither = "textdither.main:main"
+imgdither = "textdither.imgmain:main"
 
 [project.urls]
 Documentation = "https://github.com/multiplealiases/textdither#readme"
