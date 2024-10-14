@@ -26,7 +26,6 @@ classifiers = [
 dependencies = [
     "scipy",
     "numpy",
-    "itertools",
     "more-itertools",
     "scikit-learn",
     "scikit-image",
