@@ -19,7 +19,7 @@ Options:
 EOF
 }
 
-ARGS="$(getopt --options h,b:,t:,c:,o: --long help,bpp:,token-size:,codebook-length:,output-prefix: -- "$@")"
+ARGS="$(getopt --options h,p:,b:,t:,c:,o: --long help,pix-fmt:,bpp:,token-size:,codebook-length:,output-prefix: -- "$@")"
 eval set -- "$ARGS"
 while true
 do
