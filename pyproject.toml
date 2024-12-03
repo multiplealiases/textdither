@@ -34,6 +34,7 @@ dependencies = [
 [project.scripts]
 textdither = "textdither.main:main"
 imgdither = "textdither.imgmain:main"
+img2dither = "textdither.img2main:main"
 
 [project.urls]
 Documentation = "https://github.com/multiplealiases/textdither#readme"

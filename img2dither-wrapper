@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+
+function help_text() {
+    cat << EOF
+Wrapper around img2dither
+Usage: img2dither-wrapper [options] reference codebook
+
+Defaults shown in [].
+Options:
+-p, --pix-fmt          pixel format [rgb24]
+-b, --bpp              bytes per pixel
+-t, --token-size       block size [32x32]
+-c, --codebook-length  codebook length [64]
+-o, --output-prefix    output prefix [based on filename]
+-h, --help             this help
+EOF
+}
+
+cleanup_array="$(mktemp)"
+cleanup() {
+< "$cleanup_array" xargs -0 -I{} rm -rf {}
+rm -f "$cleanup_array"
+}
+# shellcheck disable=SC2120
+append_mktemp() {
+tmp="$(mktemp "$@")"
+printf "%s\0" "$tmp" >> "$cleanup_array"
+printf "%s\n" "$tmp"
+}
+trap 'cleanup' INT HUP TERM EXIT
+
+ARGS="$(getopt --options h,p:,b:,t:,c:,o: --long help,pix-fmt:,bpp:,token-size:,codebook-length:,output-prefix: -- "$@")"
+eval set -- "$ARGS"
+while true
+do
+    case "$1" in
+    -p | --pix-fmt)
+        pix_fmt="$2"
+        shift 2
+        ;;
+    -b | --bpp)
+        bytes_per_pixel="$2"
+        shift 2
+        ;;
+    -t | --token-size)
+        block_size="$2"
+        shift 2
+        ;;
+    -c | --codebook-length)
+        codebook_len="$2"
+        shift 2
+        ;;
+    -o | --output-prefix)
+        output_prefix="$2"
+        shift 2
+        ;;
+    -h | --help)
+        help_text
+        exit 1
+        ;;
+    --)
+        set +o nounset
+        if [[ -z "$2" ]]; then
+            echo "No file was specified."
+            help_text
+            exit 1
+        fi
+        set -o nounset
+        file="$2"
+        filecodebook="$3"
+        break
+        ;;
+    esac
+done
+
+block_size="${block_size:-32x32}"
+block_w="$(echo "$block_size" | cut -f 1 -d x)"
+block_h="$(echo "$block_size" | cut -f 2 -d x)"
+
+codebook_len="${codebook_len:-64}"
+pix_fmt="${pix_fmt:-rgb24}"
+# bytes_per_channel not set automatically
+
+reference=$(append_mktemp)
+codebook=$(append_mktemp)
+
+orig_res="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$file")"
+orig_w="$(echo "$orig_res" | cut -f 1 -d x)"
+orig_h="$(echo "$orig_res" | cut -f 2 -d x)"
+
+pad_w="$(( orig_w + block_w - (orig_w % block_w) ))"
+pad_h="$(( orig_h + block_h - (orig_h % block_h) ))"
+
+orig_res_codebook="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$filecodebook")"
+orig_w_codebook="$(echo "$orig_res_codebook" | cut -f 1 -d x)"
+orig_h_codebook="$(echo "$orig_res_codebook" | cut -f 2 -d x)"
+
+pad_w_codebook="$(( orig_w_codebook + block_w - (orig_w_codebook % block_w) ))"
+pad_h_codebook="$(( orig_h_codebook + block_h - (orig_h_codebook % block_h) ))"
+
+filename="$(basename "$file")"
+base_filename="${filename%.*}"
+output_prefix="${output_prefix:-$base_filename}"
+output_filename="$output_prefix"-"$pix_fmt"-c"${codebook_len}"-b"${bytes_per_pixel}"-t"${block_size}"
+
+ffmpeg -nostats -nostdin -hide_banner -i "$file" -vf "pad=${pad_w}:${pad_h}" \
+       -pix_fmt "${pix_fmt}" -f rawvideo - > "$reference"
+
+ffmpeg -nostats -nostdin -hide_banner -i "$filecodebook" -vf "pad=${pad_w_codebook}:${pad_h_codebook}" \
+       -pix_fmt "${pix_fmt}" -f rawvideo - > "$codebook"
+
+img2dither -c "${codebook_len}" -t "${block_size}" -b "${bytes_per_pixel}" -r "${pad_w}x${pad_h}" -C "${pad_w_codebook}x${pad_h_codebook}" "$reference" "$codebook" | \
+ffmpeg -s "${pad_w}x${pad_h}" -pix_fmt "$pix_fmt" -f rawvideo -i - -vf "crop=${orig_w}:${orig_h}:0:0" "$output_filename".png
