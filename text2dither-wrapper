@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+
+function help_text() {
+    cat << EOF
+Wrapper around text2dither
+Usage: text2dither-wrapper [options] reference codebook
+
+Defaults shown in [].
+Options:
+-t, --token-size       block size [1024]
+-c, --codebook-length  codebook length [64]
+-n, --samples          number of samples to take from the codebook [10000000]
+-o, --output-prefix    output prefix [based on filename]
+-h, --help             this help
+EOF
+}
+
+cleanup_array="$(mktemp)"
+cleanup() {
+< "$cleanup_array" xargs -0 -I{} rm -rf {}
+rm -f "$cleanup_array"
+}
+# shellcheck disable=SC2120
+append_mktemp() {
+tmp="$(mktemp "$@")"
+printf "%s\0" "$tmp" >> "$cleanup_array"
+printf "%s\n" "$tmp"
+}
+trap 'cleanup' INT HUP TERM EXIT
+
+ARGS="$(getopt --options h,t:,c:,o:,I: --long help,token-size:,codebook-length:,output-prefix:,iterations: -- "$@")"
+eval set -- "$ARGS"
+while true
+do
+    case "$1" in
+    -t | --token-size)
+        token_size="$2"
+        shift 2
+        ;;
+    -c | --codebook-length)
+        codebook_len="$2"
+        shift 2
+        ;;
+    -o | --output-prefix)
+        output_prefix="$2"
+        shift 2
+        ;;
+    -n | --samples)
+        samples="$2"
+        shift 2
+        ;;
+    -I | --iterations)
+        iterations="$2"
+        shift 2
+        ;;
+    -h | --help)
+        help_text
+        exit 1
+        ;;
+    --)
+        set +o nounset
+        if [[ -z "$2" ]]; then
+            echo "No file was specified."
+            help_text
+            exit 1
+        fi
+        set -o nounset
+        file="$2"
+        filecodebook="$3"
+        break
+        ;;
+    esac
+done
+
+codebook_len="${codebook_len:-64}"
+token_size="${token_size:-1024}"
+samples="${samples:-10000000}"
+iterations="${iterations:-50}"
+
+reference=$(append_mktemp)
+codebook=$(append_mktemp)
+
+filename="$(basename "$file")"
+filenamecodebook="$(basename "$filecodebook")"
+base_filename="${filename%.*}+${filenamecodebook%.*}"
+output_prefix="${output_prefix:-$base_filename}"
+output_filename="$output_prefix"-c"${codebook_len}"-t"${token_size}"
+
+ffmpeg -nostats -nostdin -hide_banner -i "$file" -f u8 -ar 48000 -ac 2 - > "${reference}"
+
+ffmpeg -nostats -nostdin -hide_banner -i "$filecodebook" -f u8 -ar 48000 -ac 2 - > "${codebook}"
+
+text2dither -c "${codebook_len}" -t "${token_size}" -n "${samples}" -i "${iterations}" "${reference}" "${codebook}" | \
+ffmpeg -f u8 -ar 48000 -ac 2 -i - -y "$output_filename".flac
