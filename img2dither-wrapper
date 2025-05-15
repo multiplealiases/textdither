@@ -106,10 +106,10 @@ base_filename="${filename%.*}"
 output_prefix="${output_prefix:-$base_filename}"
 output_filename="$output_prefix"-"$pix_fmt"-c"${codebook_len}"-b"${bytes_per_pixel}"-t"${block_size}"
 
-ffmpeg -nostats -nostdin -hide_banner -i "$file" -vf "pad=${pad_w}:${pad_h}" \
+ffmpeg -nostats -nostdin -hide_banner -i "$file" -vf "pad=${pad_w}:${pad_h}" -s "${pad_w}:${pad_h}" \
        -pix_fmt "${pix_fmt}" -f rawvideo - > "$reference"
 
-ffmpeg -nostats -nostdin -hide_banner -i "$filecodebook" -vf "pad=${pad_w_codebook}:${pad_h_codebook}" \
+ffmpeg -nostats -nostdin -hide_banner -i "$filecodebook" -vf "pad=${pad_w_codebook}:${pad_h_codebook}" -s "${pad_w_codebook}:${pad_h_codebook}" \
        -pix_fmt "${pix_fmt}" -f rawvideo - > "$codebook"
 
 img2dither -c "${codebook_len}" -t "${block_size}" -b "${bytes_per_pixel}" -r "${pad_w}x${pad_h}" -C "${pad_w_codebook}x${pad_h_codebook}" "$reference" "$codebook" | \
