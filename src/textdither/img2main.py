@@ -61,12 +61,9 @@ def main():
     y = range(0, height, token_height)
     offsets = list(itertools.product(y, x))
     print(len(offsets), file=sys.stderr)
-    pos = 0
-    while pos < block_count:
-        for i in indexes:
-            entry = codebook.cluster_centers_[i].reshape(tmp.shape[3], tmp.shape[4], args.bytes_per_pixel)
-            paste(framebuffer, entry, (offsets[pos][0], offsets[pos][1]))
-            pos += 1
+    for i in indexes:
+        entry = codebook.cluster_centers_[i].reshape(tmp.shape[3], tmp.shape[4], args.bytes_per_pixel)
+        paste(framebuffer, entry, (offsets[pos][0], offsets[pos][1]))
     sys.stdout.buffer.write(framebuffer.astype(numpy.uint8))
 
 
