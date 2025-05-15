@@ -19,7 +19,7 @@ Options:
 EOF
 }
 
-ARGS="$(getopt --options h,p:,b:,t:,c:,o: --long help,pix-fmt:,bpp:,token-size:,codebook-length:,output-prefix: -- "$@")"
+ARGS="$(getopt --options h,p:,b:,t:,c:,o:,n: --long help,pix-fmt:,bpp:,token-size:,codebook-length:,output-prefix:,samples: -- "$@")"
 eval set -- "$ARGS"
 while true
 do
@@ -42,6 +42,10 @@ do
         ;;
     -o | --output-prefix)
         output_prefix="$2"
+        shift 2
+        ;;
+    -n | --samples)
+        samples="$2"
         shift 2
         ;;
     -h | --help)
@@ -68,6 +72,7 @@ block_h="$(echo "$block_size" | cut -f 2 -d x)"
 
 codebook_len="${codebook_len:-64}"
 pix_fmt="${pix_fmt:-rgb24}"
+samples="${samples:-50000}"
 # bytes_per_channel not set automatically
 
 orig_res="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$file")"
@@ -84,5 +89,5 @@ output_filename="$output_prefix"-"$pix_fmt"-c"${codebook_len}"-b"${bytes_per_pix
 
 ffmpeg -nostats -nostdin -hide_banner -i "$file" -vf "pad=${pad_w}:${pad_h}" \
        -pix_fmt "${pix_fmt}" -f rawvideo - | \
-       imgdither -c "${codebook_len}" -t "${block_size}" -b "${bytes_per_pixel}" -s "${pad_w}x${pad_h}" /dev/stdin | \
+       imgdither -c "${codebook_len}" -t "${block_size}" -b "${bytes_per_pixel}" -s "${pad_w}x${pad_h}" -n "${samples}" /dev/stdin | \
        ffmpeg -s "${pad_w}x${pad_h}" -pix_fmt "$pix_fmt" -f rawvideo -i - -vf "crop=${orig_w}:${orig_h}:0:0" "$output_filename".png
